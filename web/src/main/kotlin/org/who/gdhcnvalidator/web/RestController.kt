@@ -11,6 +11,7 @@ import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.RestController
+import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.multipart.MultipartFile
 import org.who.gdhcnvalidator.QRDecoder
 import org.who.gdhcnvalidator.trust.CompoundRegistry
@@ -30,6 +31,9 @@ class RestController {
         var registry = CompoundRegistry(TrustRegistryFactory.getTrustRegistries()).apply {
             init()
         }
+        
+        // Initialize validation service
+        val validationService = ValidationService(registry)
     }
 
     data class QRContents(
@@ -67,6 +71,81 @@ class RestController {
 
         return this.verify(QRContents(qrContents.text))
     }
+
+    // New validation service endpoints
+
+    /**
+     * Check if QR code is recognized by any supported format
+     */
+    @PostMapping("/validation/format-recognition")
+    fun formatRecognition(@RequestBody qr: QRContents): ValidationService.FormatRecognitionResult {
+        return validationService.recognizeFormat(qr.uri)
+    }
+
+    /**
+     * Check if QR code matches a specific format
+     */
+    @PostMapping("/validation/format-recognition/{format}")
+    fun specificFormatRecognition(
+        @RequestBody qr: QRContents,
+        @PathVariable format: String
+    ): ValidationService.FormatRecognitionResult {
+        val targetFormat = try {
+            when (format.uppercase()) {
+                "HCERT", "HC1" -> ValidationService.QRFormat.HCERT
+                "SHC" -> ValidationService.QRFormat.SHC
+                "DIVOC_B64", "B64" -> ValidationService.QRFormat.DIVOC_B64
+                "DIVOC_PK", "PK" -> ValidationService.QRFormat.DIVOC_PK
+                "ICAO" -> ValidationService.QRFormat.ICAO
+                else -> return ValidationService.FormatRecognitionResult(
+                    false, null, "Unknown format: $format"
+                )
+            }
+        } catch (e: Exception) {
+            return ValidationService.FormatRecognitionResult(
+                false, null, "Invalid format parameter: $format"
+            )
+        }
+
+        return validationService.recognizeSpecificFormat(qr.uri, targetFormat)
+    }
+
+    /**
+     * Extract KID (Key ID) from QR code if present
+     */
+    @PostMapping("/validation/kid-extraction")
+    fun kidExtraction(@RequestBody qr: QRContents): ValidationService.KidExtractionResult {
+        return validationService.extractKid(qr.uri)
+    }
+
+    /**
+     * Check which environment (DEV/UAT/PROD) a KID belongs to
+     */
+    @PostMapping("/validation/kid-environment")
+    fun kidEnvironment(@RequestBody request: KidEnvironmentRequest): ValidationService.KidEnvironmentResult {
+        return validationService.checkKidEnvironment(request.kid)
+    }
+
+    /**
+     * Validate digital signature of QR code
+     */
+    @PostMapping("/validation/signature-validation")
+    fun signatureValidation(@RequestBody qr: QRContents): ValidationService.SignatureValidationResult {
+        return validationService.validateSignature(qr.uri)
+    }
+
+    /**
+     * Extract content from QR code
+     */
+    @PostMapping("/validation/content-extraction")
+    fun contentExtraction(@RequestBody qr: QRContents): ValidationService.ContentExtractionResult {
+        return validationService.extractContent(qr.uri)
+    }
+
+    // Data class for KID environment request
+    data class KidEnvironmentRequest(
+        val kid: String
+    )
 
     fun addBordertoImage(source: BufferedImage, color: Color = Color.WHITE, borderLeft: Int = 50, borderTop: Int = 50): BufferedImage {
         val borderedImageWidth: Int = source.width + borderLeft * 2
