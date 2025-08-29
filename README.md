@@ -1,13 +1,15 @@
-# World Health Organization's GDHCN Verifier App
+# World Health Organization's GDHCN Verifier
 
 <img align="right" src="./docs/screenshots/3.Results.png" data-canonical-src="./docs/screenshots/3.Results.png" width="350px"/>
 
-Digital Health Certificates verifier app for Android. The app scans a QR code for a credential/pass, 
-cryptographically verifies it and displays the results on the phone. No information is transmitted 
-anywhere. Our goal is to make a Verifier App with the widest possible verification capabilities.
+Digital Health Certificates verifier for Android and web platforms. The Android app scans QR codes for credentials/passes, 
+cryptographically verifies them and displays results on the phone. The REST API service provides comprehensive validation 
+capabilities with step-by-step validation endpoints and interactive Swagger UI documentation. No personal information is 
+transmitted anywhere. Our goal is to make verification services with the widest possible verification capabilities.
 
 # Current Features
 
+## Android App
 1. Decodes QR Codes
 2. Cryptographically Verifies the information following the specifications of
    1. W3C VC
@@ -20,12 +22,23 @@ anywhere. Our goal is to make a Verifier App with the widest possible verificati
 5. Calculates the assessment of the health information using CQL Libraries from subscribed IGs
 6. Displays the medical information, the credential information, the issuer information and the assessment results in the screen.
 
+## REST API Service
+1. **Step-by-step validation endpoints** - Granular validation services under `/validation/` for format recognition, signature validation, key extraction, and content decoding
+2. **Full QR verification** - Complete verification endpoint at `/verify` for all-in-one validation
+3. **Image processing** - Extract and verify QR codes from uploaded images via `/findAndVerify`
+4. **Interactive documentation** - Swagger UI at `/swagger-ui.html` with full OpenAPI 3.x compliance
+5. **Service metadata** - Root endpoint `/` returns service information and documentation links
+6. **Environment detection** - Identify DEV/UAT/PROD environments for cryptographic keys
+7. **Comprehensive error handling** - Detailed error responses for each validation step
+
 ## Documentation
 
 ### Project Documentation
 - [**Data Models**](docs/data-models.md) - Comprehensive documentation of all supported certificate data models (DDCC, DCC, DIVOC, SHC, ICAO, ICVP)
 - [**User Workflows**](docs/user-workflows.md) - User experience and technical workflow documentation
 - [**Adding New Schemas**](NEW_SCHEMAS.md) - Guide for adding support for new certificate formats
+- [**Validation Services API**](docs/validation-services-api.md) - REST API endpoints documentation with examples
+- [**Web Module Validation Services**](web/README_VALIDATION_SERVICES.md) - Detailed guide for step-by-step validation endpoints
 
 ### Reference Documentation
 - https://worldhealthorganization.github.io/smart-trust/
@@ -34,8 +47,10 @@ anywhere. Our goal is to make a Verifier App with the widest possible verificati
 - https://smart.who.int/trust/
 
 # Development Overview
-- 
-## Setup
+
+## Android App Development
+
+### Setup
 
 Make sure to have the following pre-requisites installed:
 1. Java 17
@@ -64,6 +79,33 @@ Build the app:
 ## Installing on device
 ```bash
 ./gradlew installDebug
+```
+
+## REST API Service Development
+
+### Setup
+The REST API service is located in the `web/` module and provides comprehensive validation endpoints with Swagger UI documentation.
+
+### Building and Running
+Build and run the REST API service:
+```bash
+./gradlew :web:bootRun
+```
+
+The service will start on http://localhost:8080 with:
+- **Swagger UI**: http://localhost:8080/swagger-ui.html
+- **API Documentation**: http://localhost:8080/v3/api-docs  
+- **Service Info**: http://localhost:8080/
+
+### REST API Testing
+Test the validation endpoints:
+```bash
+./test_validation_endpoints.sh
+```
+
+### Web Module Testing
+```bash
+./gradlew :web:test
 ```
 
 ## KeyCloak instructions

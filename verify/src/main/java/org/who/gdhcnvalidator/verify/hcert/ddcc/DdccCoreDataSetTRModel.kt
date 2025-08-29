@@ -1,13 +1,11 @@
-package org.who.gdhcnvalidator.verify.hcert.dcc.logical
+package org.who.gdhcnvalidator.verify.hcert.ddcc
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize
 import org.hl7.fhir.r4.model.*
 import org.who.gdhcnvalidator.verify.BaseModel
-import org.who.gdhcnvalidator.verify.hcert.ddcc.DdccCertificate
-import org.who.gdhcnvalidator.verify.hcert.ddcc.DdccCoreDataSet
-import org.who.gdhcnvalidator.verify.hcert.ddcc.IdentifierDeserializer
-import org.who.gdhcnvalidator.verify.hcert.ddcc.MyMeta
 
+@JsonIgnoreProperties(ignoreUnknown = true)
 class DdccCoreDataSetTR (
     meta: MyMeta?,
     name: StringType?,
