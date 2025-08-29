@@ -13,8 +13,8 @@ import org.hl7.fhir.r4.model.Reference
 import org.who.gdhcnvalidator.QRDecoder
 import org.who.gdhcnvalidator.trust.TrustRegistry
 import org.who.gdhcnvalidator.verify.hcert.dcc.DccMapper
-import org.who.gdhcnvalidator.verify.hcert.dcc.logical.DdccCoreDataSetTR
-import org.who.gdhcnvalidator.verify.hcert.dcc.logical.DdccCoreDataSetVS
+import org.who.gdhcnvalidator.verify.hcert.ddcc.DdccCoreDataSetTR
+import org.who.gdhcnvalidator.verify.hcert.ddcc.DdccCoreDataSetVS
 import org.who.gdhcnvalidator.verify.hcert.ddcc.DdccMapper
 import org.who.gdhcnvalidator.verify.hcert.ddcc.ReferenceDeserializer
 import org.who.gdhcnvalidator.verify.hcert.healthlink.HealthLinkMapper

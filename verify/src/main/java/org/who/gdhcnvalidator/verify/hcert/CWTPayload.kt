@@ -11,10 +11,10 @@ import org.hl7.fhir.r4.model.Coding
 import org.hl7.fhir.r4.model.DateTimeType
 import org.hl7.fhir.r4.model.StringType
 import org.who.gdhcnvalidator.verify.BaseModel
-import org.who.gdhcnvalidator.verify.hcert.dcc.logical.DdccCoreDataSetTR
-import org.who.gdhcnvalidator.verify.hcert.dcc.logical.DdccCoreDataSetVS
-import org.who.gdhcnvalidator.verify.hcert.dcc.logical.HCertDCC
-import org.who.gdhcnvalidator.verify.hcert.dcc.logical.HCertDVC
+import org.who.gdhcnvalidator.verify.hcert.ddcc.DdccCoreDataSetTR
+import org.who.gdhcnvalidator.verify.hcert.ddcc.DdccCoreDataSetVS
+import org.who.gdhcnvalidator.verify.hcert.dcc.HCertDCC
+import org.who.gdhcnvalidator.verify.hcert.icvp.HCertDVC
 import org.who.gdhcnvalidator.verify.hcert.healthlink.SmartHealthLinkModel
 import java.util.Date
 

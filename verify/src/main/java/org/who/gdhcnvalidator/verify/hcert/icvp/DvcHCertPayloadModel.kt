@@ -1,5 +1,6 @@
-package org.who.gdhcnvalidator.verify.hcert.dcc.logical
+package org.who.gdhcnvalidator.verify.hcert.icvp
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize
 import com.google.api.client.util.DateTime
 import org.hl7.fhir.r4.model.*
@@ -7,6 +8,7 @@ import org.who.gdhcnvalidator.verify.BaseModel
 import org.who.gdhcnvalidator.verify.hcert.ddcc.IdentifierDeserializer
 
 
+@JsonIgnoreProperties(ignoreUnknown = true)
 class HCertDVC(
     val n: StringType?,       // Person name
     val dob: DateType?,       // Date of birth in YYYY-MM-DD format

@@ -1,5 +1,7 @@
-package org.who.gdhcnvalidator.verify.hcert.dcc.logical
+package org.who.gdhcnvalidator.verify.hcert.ddcc
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties
+import com.fasterxml.jackson.annotation.JsonProperty
 import com.fasterxml.jackson.core.JsonParser
 import com.fasterxml.jackson.core.TreeNode
 import com.fasterxml.jackson.databind.DeserializationContext
@@ -9,13 +11,10 @@ import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import com.fasterxml.jackson.module.kotlin.readValue
 import org.hl7.fhir.r4.model.*
 import org.who.gdhcnvalidator.verify.BaseModel
-import org.who.gdhcnvalidator.verify.hcert.ddcc.DdccCertificate
-import org.who.gdhcnvalidator.verify.hcert.ddcc.DdccCoreDataSet
-import org.who.gdhcnvalidator.verify.hcert.ddcc.IdentifierDeserializer
-import org.who.gdhcnvalidator.verify.hcert.ddcc.MyMeta
 
 
 // from https://build.fhir.org/ig/WorldHealthOrganization/ddcc/StructureDefinition-DDCCCoreDataSetVS.html
+@JsonIgnoreProperties(ignoreUnknown = true)
 class DdccCoreDataSetVS (
     meta: MyMeta?,
     name: StringType?,
@@ -29,6 +28,7 @@ class DdccCoreDataSetVS (
     val vaccination: Vaccination?,
 ): DdccCoreDataSet(meta, name, birthDate, sex, identifier, certificate)
 
+@JsonIgnoreProperties(ignoreUnknown = true)
 class DdccVaccination (
     val vaccine: Coding?,           // 1..1	Coding	Vaccine or prophylaxis
     val brand: Coding?,             // 1..1	Coding	Vaccine brand
@@ -65,3 +65,6 @@ object CodingOrReferenceDeserializer: JsonDeserializer<Base>() {
         }
     }
 }
+
+// Type alias for compatibility
+typealias Vaccination = DdccVaccination

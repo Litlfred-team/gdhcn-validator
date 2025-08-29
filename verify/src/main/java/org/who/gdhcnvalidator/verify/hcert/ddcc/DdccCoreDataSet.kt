@@ -1,5 +1,6 @@
 package org.who.gdhcnvalidator.verify.hcert.ddcc
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties
 import com.fasterxml.jackson.core.JsonParser
 import com.fasterxml.jackson.core.TreeNode
 import com.fasterxml.jackson.databind.DeserializationContext
@@ -18,6 +19,7 @@ import org.hl7.fhir.r4.model.StringType
 import org.who.gdhcnvalidator.verify.BaseModel
 import kotlin.reflect.full.declaredMemberProperties
 
+@JsonIgnoreProperties(ignoreUnknown = true)
 open class DdccCoreDataSet (
     val meta: MyMeta?,
 
@@ -30,6 +32,7 @@ open class DdccCoreDataSet (
     val certificate: DdccCertificate?
 ): BaseModel()
 
+@JsonIgnoreProperties(ignoreUnknown = true)
 class DdccCertificate(
     @JsonDeserialize(using = ReferenceDeserializer::class)
     val issuer: Reference?,	    //1..1	Reference(DDCC Organization)	Certificate issuer
@@ -43,6 +46,7 @@ class DdccCertificate(
 ): BaseModel()
 
 
+@JsonIgnoreProperties(ignoreUnknown = true)
 class MyMeta (
     val notarisedOn: DateTimeType?,
     val reference: StringType?,

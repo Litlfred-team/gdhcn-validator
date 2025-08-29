@@ -12,7 +12,7 @@ import org.hl7.fhir.r4.utils.StructureMapUtilities
 import org.hl7.fhir.utilities.npm.NpmPackage
 import org.who.gdhcnvalidator.verify.BaseMapper
 import org.who.gdhcnvalidator.verify.DualHapiWorkerContext
-import org.who.gdhcnvalidator.verify.hcert.dcc.logical.HCertDVC
+import org.who.gdhcnvalidator.verify.hcert.icvp.HCertDVC
 import java.util.UUID
 import kotlin.time.measureTimedValue
 

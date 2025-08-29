@@ -1,8 +1,10 @@
-package org.who.gdhcnvalidator.verify.hcert.dcc.logical
+package org.who.gdhcnvalidator.verify.hcert.dcc
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties
 import org.hl7.fhir.r4.model.*
 import org.who.gdhcnvalidator.verify.BaseModel
 
+@JsonIgnoreProperties(ignoreUnknown = true)
 class HCertDCC(
     val ver: StringType?,       // Schema version
     val nam: PersonName?,       // Person name
@@ -12,6 +14,7 @@ class HCertDCC(
     val r: List<Recovery>?      // Recovery Group
 ): BaseModel()
 
+@JsonIgnoreProperties(ignoreUnknown = true)
 class PersonName(
     val fn	:	StringType?,  // Surname
     val fnt	:	StringType?,  // Standardised surname
@@ -19,6 +22,7 @@ class PersonName(
     val gnt	:	StringType?   // Standardised forename
 ): BaseModel()
 
+@JsonIgnoreProperties(ignoreUnknown = true)
 class Vaccination(
     val tg:	StringType?,    // disease or agent targeted
     val vp:	StringType?,    // vaccine or prophylaxis
@@ -32,6 +36,7 @@ class Vaccination(
     val ci:	StringType?     // Unique Certificate Identifier: UVCI
 ): BaseModel()
 
+@JsonIgnoreProperties(ignoreUnknown = true)
 class Test(
     val tg:	StringType?,    //disease or agent targeted
     val tt:	StringType?,    //Type of Test
@@ -45,6 +50,7 @@ class Test(
     val ci:	StringType?     // Unique Certificate Identifier: UVCI
 ): BaseModel()
 
+@JsonIgnoreProperties(ignoreUnknown = true)
 class Recovery(
     val tg: StringType?,	// disease or agent targeted
     val fr: DateType?,	    // ISO 8601 complete date of first positive NAA test result
