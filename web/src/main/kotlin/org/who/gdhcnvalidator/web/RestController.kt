@@ -3,15 +3,19 @@ package org.who.gdhcnvalidator.web
 import com.google.zxing.*
 import com.google.zxing.client.j2se.BufferedImageLuminanceSource
 import com.google.zxing.common.HybridBinarizer
+import io.swagger.v3.oas.annotations.Operation
+import io.swagger.v3.oas.annotations.Parameter
+import io.swagger.v3.oas.annotations.media.Content
+import io.swagger.v3.oas.annotations.media.Schema
+import io.swagger.v3.oas.annotations.responses.ApiResponse
+import io.swagger.v3.oas.annotations.responses.ApiResponses
+import io.swagger.v3.oas.annotations.tags.Tag
 import org.apache.pdfbox.Loader
 import org.apache.pdfbox.pdmodel.PDDocument
 import org.apache.pdfbox.rendering.PDFRenderer
+import org.springframework.http.MediaType
 import org.springframework.util.StringUtils
-import org.springframework.web.bind.annotation.PostMapping
-import org.springframework.web.bind.annotation.RequestBody
-import org.springframework.web.bind.annotation.RequestParam
-import org.springframework.web.bind.annotation.RestController
-import org.springframework.web.bind.annotation.PathVariable
+import org.springframework.web.bind.annotation.*
 import org.springframework.web.multipart.MultipartFile
 import org.who.gdhcnvalidator.QRDecoder
 import org.who.gdhcnvalidator.trust.CompoundRegistry
@@ -26,6 +30,7 @@ import kotlin.apply
 
 
 @RestController
+@Tag(name = "GDHCN Validator API", description = "Digital health certificate validation services")
 class RestController {
     companion object {
         var registry = CompoundRegistry(TrustRegistryFactory.getTrustRegistries()).apply {
@@ -40,12 +45,48 @@ class RestController {
         val uri: String,
     )
 
+    data class ServiceInfo(
+        val serviceName: String,
+        val version: String,
+        val description: String,
+        val swaggerUiUrl: String,
+        val apiDocsUrl: String
+    )
+
+    @GetMapping("/", produces = [MediaType.APPLICATION_JSON_VALUE])
+    @Operation(
+        summary = "Service Information",
+        description = "Returns basic information about the GDHCN Validator service including links to API documentation"
+    )
+    @ApiResponse(responseCode = "200", description = "Service information retrieved successfully")
+    fun serviceInfo(): ServiceInfo {
+        return ServiceInfo(
+            serviceName = "GDHCN Validator",
+            version = "0.1.0",
+            description = "WHO Global Digital Health Certification Network (GDHCN) Validator - REST API for validating digital health certificates",
+            swaggerUiUrl = "/swagger-ui.html",
+            apiDocsUrl = "/v3/api-docs"
+        )
+    }
+
     @PostMapping("/verify")
+    @Operation(
+        summary = "Full QR Code Verification",
+        description = "Performs complete verification of a digital health certificate QR code including format detection, signature validation, and content extraction"
+    )
+    @ApiResponses(value = [
+        ApiResponse(responseCode = "200", description = "Verification completed", content = [Content(schema = Schema(implementation = QRDecoder.VerificationResult::class))]),
+        ApiResponse(responseCode = "400", description = "Invalid QR code format")
+    ])
     fun verify(@RequestBody qr: QRContents): QRDecoder.VerificationResult {
         return QRDecoder(registry).decode(qr.uri)
     }
 
     @PostMapping("/findAndVerify")
+    @Operation(
+        summary = "Find and Verify QR Code from Image",
+        description = "Extracts QR code from uploaded image file and performs full verification"
+    )
     fun findAndVerify(@RequestParam("file") file: MultipartFile): QRDecoder.VerificationResult {
         if (file.isEmpty()) {
             return QRDecoder.VerificationResult(QRDecoder.Status.NOT_FOUND, null, null, "", null)
@@ -78,6 +119,11 @@ class RestController {
      * Check if QR code is recognized by any supported format
      */
     @PostMapping("/validation/format-recognition")
+    @Tag(name = "Validation Services", description = "Step-by-step validation services")
+    @Operation(
+        summary = "Format Recognition",
+        description = "Identifies the format of a QR code (HCERT, SHC, DIVOC, ICAO) without performing full validation"
+    )
     fun formatRecognition(@RequestBody qr: QRContents): ValidationService.FormatRecognitionResult {
         return validationService.recognizeFormat(qr.uri)
     }
@@ -86,8 +132,14 @@ class RestController {
      * Check if QR code matches a specific format
      */
     @PostMapping("/validation/format-recognition/{format}")
+    @Tag(name = "Validation Services")
+    @Operation(
+        summary = "Specific Format Recognition",
+        description = "Checks if a QR code matches a specific format"
+    )
     fun specificFormatRecognition(
         @RequestBody qr: QRContents,
+        @Parameter(description = "Format to check (HCERT, SHC, DIVOC_B64, DIVOC_PK, ICAO)")
         @PathVariable format: String
     ): ValidationService.FormatRecognitionResult {
         val targetFormat = try {
@@ -114,6 +166,11 @@ class RestController {
      * Extract KID (Key ID) from QR code if present
      */
     @PostMapping("/validation/kid-extraction")
+    @Tag(name = "Validation Services")
+    @Operation(
+        summary = "Key ID Extraction",
+        description = "Extracts the Key ID (KID) from a QR code if present in the certificate headers"
+    )
     fun kidExtraction(@RequestBody qr: QRContents): ValidationService.KidExtractionResult {
         return validationService.extractKid(qr.uri)
     }
@@ -122,6 +179,11 @@ class RestController {
      * Check which environment (DEV/UAT/PROD) a KID belongs to
      */
     @PostMapping("/validation/kid-environment")
+    @Tag(name = "Validation Services")
+    @Operation(
+        summary = "Key ID Environment Check",
+        description = "Determines which environment (PRODUCTION, ACCEPTANCE_TEST, DEV_STAGING) a Key ID belongs to"
+    )
     fun kidEnvironment(@RequestBody request: KidEnvironmentRequest): ValidationService.KidEnvironmentResult {
         return validationService.checkKidEnvironment(request.kid)
     }
@@ -130,6 +192,11 @@ class RestController {
      * Validate digital signature of QR code
      */
     @PostMapping("/validation/signature-validation")
+    @Tag(name = "Validation Services")
+    @Operation(
+        summary = "Signature Validation",
+        description = "Validates the digital signature of a QR code certificate with detailed status information"
+    )
     fun signatureValidation(@RequestBody qr: QRContents): ValidationService.SignatureValidationResult {
         return validationService.validateSignature(qr.uri)
     }
@@ -138,6 +205,11 @@ class RestController {
      * Extract content from QR code
      */
     @PostMapping("/validation/content-extraction")
+    @Tag(name = "Validation Services")
+    @Operation(
+        summary = "Content Extraction",
+        description = "Extracts and decodes the content from a QR code without signature validation"
+    )
     fun contentExtraction(@RequestBody qr: QRContents): ValidationService.ContentExtractionResult {
         return validationService.extractContent(qr.uri)
     }
