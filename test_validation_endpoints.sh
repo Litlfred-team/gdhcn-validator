@@ -17,7 +17,7 @@ echo "======================================"
 
 # Test 1: Valid HCERT QR Code - String Content
 echo -e "\n1. Testing valid HCERT QR code (string content)..."
-response=$(curl -s -w "%{http_code}" -X POST "$BASE_URL/validate-code" \
+response=$(curl -s -w "%{http_code}" -X POST "$BASE_URL/validation/validate-code" \
   -H "Content-Type: application/json" \
   -d "{\"content\": \"$HCERT_QR\"}")
 
@@ -29,7 +29,7 @@ echo "Response: $body" | jq '.' 2>/dev/null || echo "$body"
 
 # Test 2: Valid HCERT QR Code with format parameter
 echo -e "\n2. Testing valid HCERT QR code with format parameter..."
-response=$(curl -s -w "%{http_code}" -X POST "$BASE_URL/validate-code?format=HC1" \
+response=$(curl -s -w "%{http_code}" -X POST "$BASE_URL/validation/validate-code?format=HC1" \
   -H "Content-Type: application/json" \
   -d "{\"content\": \"$HCERT_QR\"}")
 
@@ -41,7 +41,7 @@ echo "Response: $body" | jq '.' 2>/dev/null || echo "$body"
 
 # Test 3: Non-HC1 QR Code (should be rejected for now)
 echo -e "\n3. Testing non-HC1 QR code (SHC) - should be rejected..."
-response=$(curl -s -w "%{http_code}" -X POST "$BASE_URL/validate-code" \
+response=$(curl -s -w "%{http_code}" -X POST "$BASE_URL/validation/validate-code" \
   -H "Content-Type: application/json" \
   -d "{\"content\": \"$SHC_QR\"}")
 
@@ -53,7 +53,7 @@ echo "Response: $body" | jq '.' 2>/dev/null || echo "$body"
 
 # Test 4: Wrong format parameter
 echo -e "\n4. Testing HCERT with wrong format parameter..."
-response=$(curl -s -w "%{http_code}" -X POST "$BASE_URL/validate-code?format=SHC" \
+response=$(curl -s -w "%{http_code}" -X POST "$BASE_URL/validation/validate-code?format=SHC" \
   -H "Content-Type: application/json" \
   -d "{\"content\": \"$HCERT_QR\"}")
 
@@ -65,7 +65,7 @@ echo "Response: $body" | jq '.' 2>/dev/null || echo "$body"
 
 # Test 5: Unsupported format parameter
 echo -e "\n5. Testing unsupported format parameter..."
-response=$(curl -s -w "%{http_code}" -X POST "$BASE_URL/validate-code?format=UNKNOWN" \
+response=$(curl -s -w "%{http_code}" -X POST "$BASE_URL/validation/validate-code?format=UNKNOWN" \
   -H "Content-Type: application/json" \
   -d "{\"content\": \"$HCERT_QR\"}")
 
@@ -77,7 +77,7 @@ echo "Response: $body" | jq '.' 2>/dev/null || echo "$body"
 
 # Test 6: Unknown QR format
 echo -e "\n6. Testing unknown QR format..."
-response=$(curl -s -w "%{http_code}" -X POST "$BASE_URL/validate-code" \
+response=$(curl -s -w "%{http_code}" -X POST "$BASE_URL/validation/validate-code" \
   -H "Content-Type: application/json" \
   -d "{\"content\": \"$UNKNOWN_QR\"}")
 
@@ -89,7 +89,7 @@ echo "Response: $body" | jq '.' 2>/dev/null || echo "$body"
 
 # Test 7: Missing content
 echo -e "\n7. Testing missing content..."
-response=$(curl -s -w "%{http_code}" -X POST "$BASE_URL/validate-code" \
+response=$(curl -s -w "%{http_code}" -X POST "$BASE_URL/validation/validate-code" \
   -H "Content-Type: application/json" \
   -d "{}")
 
@@ -102,7 +102,7 @@ echo "Response: $body" | jq '.' 2>/dev/null || echo "$body"
 # Test 8: Image upload test (commented out - requires actual image file)
 echo -e "\n8. Image upload test (requires QR code image)..."
 echo "# To test image upload, use:"
-echo "# curl -X POST \"$BASE_URL/validate-code\" -F \"file=@path/to/qr_image.png\""
+echo "# curl -X POST \"$BASE_URL/validation/validate-code\" -F \"file=@path/to/qr_image.png\""
 
 # Test 9: Service info endpoint 
 echo -e "\n9. Testing service info endpoint..."

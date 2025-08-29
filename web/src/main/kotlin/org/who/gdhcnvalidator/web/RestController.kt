@@ -193,7 +193,7 @@ class RestController {
     /**
      * Unified QR Code Validation
      */
-    @PostMapping("/validate-code")
+    @PostMapping("/validation/validate-code")
     @Tag(name = "Validation API", description = "Unified QR code validation")
     @Operation(
         summary = "Validate QR Code",

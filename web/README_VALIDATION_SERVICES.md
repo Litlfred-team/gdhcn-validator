@@ -6,7 +6,7 @@ This document describes the new validation services that provide step-by-step QR
 
 The validation services break down the QR code validation process into discrete steps, allowing applications to:
 
-- **Check format recognition** - Determine if a QR code is from a supported format
+- **Unified QR code validation** - Complete validation with format detection, signature verification, and content extraction  
 - **Extract Key IDs** - Find and extract cryptographic key identifiers
 - **Check environments** - Determine if keys belong to DEV, UAT, or PROD environments  
 - **Validate signatures** - Perform cryptographic signature verification
@@ -31,40 +31,71 @@ This granular approach enables more flexible integration and better error handli
 http://localhost:8080/validation/
 ```
 
-### 1. Format Recognition
+### 1. QR Code Validation
 
-**Endpoint:** `POST /format-recognition`
+**Endpoint:** `POST /validate-code`
 
-Check if QR code is recognized by any supported format.
+Validates a QR code either from string content or uploaded image. Supports optional format filtering for HC1/HCERT format.
 
+**For string content:**
 ```bash
-curl -X POST http://localhost:8080/validation/format-recognition \
+curl -X POST http://localhost:8080/validation/validate-code \
   -H "Content-Type: application/json" \
-  -d '{"uri": "HC1:6BF+70790T9WJWG..."}'
+  -d '{"content": "HC1:6BF+70790T9WJWG..."}'
 ```
 
-**Response:**
+**For image upload:**
+```bash
+curl -X POST http://localhost:8080/validation/validate-code \
+  -F "file=@qr_code_image.png"
+```
+
+**With format filtering:**
+```bash
+curl -X POST "http://localhost:8080/validation/validate-code?format=HC1" \
+  -H "Content-Type: application/json" \
+  -d '{"content": "HC1:6BF+70790T9WJWG..."}'
+```
+
+**Response (Valid Certificate - HTTP 200):**
 ```json
 {
-  "recognized": true,
-  "format": "HCERT",
-  "description": "HCERT (EU DCC or WHO DDCC)"
+  "valid": true,
+  "format": "HC1",
+  "issuer": "WHO/Country Name",
+  "details": {
+    "status": "VERIFIED",
+    "kid": "key_id",
+    "environment": "PRODUCTION",
+    "signatureValid": true,
+    "content": "decoded_content"
+  }
 }
 ```
 
-### 2. Specific Format Recognition
-
-**Endpoint:** `POST /format-recognition/{format}`
-
-Check if QR code matches a specific format. Supported formats: `hcert`, `shc`, `divoc_b64`, `divoc_pk`, `icao`
-
-```bash
-curl -X POST http://localhost:8080/validation/format-recognition/hcert \
-  -H "Content-Type: application/json" \
-  -d '{"uri": "HC1:6BF+70790T9WJWG..."}'
+**Response (Invalid Certificate - HTTP 422):**
+```json
+{
+  "valid": false,
+  "format": "HC1",
+  "issuer": null,
+  "details": {
+    "status": "INVALID_SIGNATURE",
+    "kid": "key_id",
+    "environment": null,
+    "signatureValid": false,
+    "content": "decoded_content"
+  }
+}
 ```
 
-### 3. KID Extraction
+**HTTP Status Codes:**
+- **200**: Valid certificate with full validation details
+- **400**: Invalid input format or unsupported format parameter
+- **404**: QR code format not recognized or QR code not found in image
+- **422**: Invalid certificate content (bad signature, untrusted issuer, expired keys, etc.)
+
+### 2. KID Extraction
 
 **Endpoint:** `POST /kid-extraction`
 
@@ -85,7 +116,7 @@ curl -X POST http://localhost:8080/validation/kid-extraction \
 }
 ```
 
-### 4. KID Environment Check
+### 3. KID Environment Check
 
 **Endpoint:** `POST /kid-environment`
 
@@ -106,7 +137,7 @@ curl -X POST http://localhost:8080/validation/kid-environment \
 }
 ```
 
-### 5. Signature Validation
+### 4. Signature Validation
 
 **Endpoint:** `POST /signature-validation`
 
@@ -132,7 +163,7 @@ curl -X POST http://localhost:8080/validation/signature-validation \
 }
 ```
 
-### 6. Content Extraction
+### 5. Content Extraction
 
 **Endpoint:** `POST /content-extraction`
 
@@ -183,20 +214,20 @@ The signature validation endpoint returns detailed status information:
 
 Here's an example of how to use the validation services in sequence:
 
-### 1. Check Format
+### 1. Validate QR Code
 ```bash
-# First, check if the QR is recognized
-curl -X POST http://localhost:8080/validation/format-recognition \
+# Validate QR code (all-in-one validation with format detection)
+curl -X POST http://localhost:8080/validation/validate-code \
   -H "Content-Type: application/json" \
-  -d '{"uri": "HC1:6BF+70790T9WJWG..."}'
+  -d '{"content": "HC1:6BF+70790T9WJWG..."}'
 ```
 
-### 2. Verify Specific Format
+### 2. Validate with Format Filter
 ```bash
-# Confirm it's the expected format (e.g., HCERT)
-curl -X POST http://localhost:8080/validation/format-recognition/hcert \
+# Validate QR code with specific format requirement
+curl -X POST "http://localhost:8080/validation/validate-code?format=HC1" \
   -H "Content-Type: application/json" \
-  -d '{"uri": "HC1:6BF+70790T9WJWG..."}'
+  -d '{"content": "HC1:6BF+70790T9WJWG..."}'
 ```
 
 ### 3. Extract KID
