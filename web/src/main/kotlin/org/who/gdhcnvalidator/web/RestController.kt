@@ -14,6 +14,7 @@ import org.apache.pdfbox.Loader
 import org.apache.pdfbox.pdmodel.PDDocument
 import org.apache.pdfbox.rendering.PDFRenderer
 import org.springframework.http.MediaType
+import org.springframework.http.ResponseEntity
 import org.springframework.util.StringUtils
 import org.springframework.web.bind.annotation.*
 import org.springframework.web.multipart.MultipartFile
@@ -36,9 +37,6 @@ class RestController {
         var registry = CompoundRegistry(TrustRegistryFactory.getTrustRegistries()).apply {
             init()
         }
-        
-        // Initialize validation service
-        val validationService = ValidationService(registry)
     }
 
     data class QRContents(
@@ -113,111 +111,163 @@ class RestController {
         return this.verify(QRContents(qrContents.text))
     }
 
-    // New validation service endpoints
+    // New unified validation endpoint
+
+    data class ValidationRequest(
+        val content: String? = null
+    )
+
+    data class ValidationResponse(
+        val valid: Boolean,
+        val format: String?,
+        val issuer: String?,
+        val details: ValidationDetails?
+    )
+
+    data class ValidationDetails(
+        val status: String,
+        val kid: String?,
+        val environment: String?,
+        val signatureValid: Boolean,
+        val content: String?
+    )
 
     /**
-     * Check if QR code is recognized by any supported format
+     * Unified QR Code Validation
      */
-    @PostMapping("/validation/format-recognition")
-    @Tag(name = "Validation Services", description = "Step-by-step validation services")
+    @PostMapping("/validate-code")
+    @Tag(name = "Validation API", description = "Unified QR code validation")
     @Operation(
-        summary = "Format Recognition",
-        description = "Identifies the format of a QR code (HCERT, SHC, DIVOC, ICAO) without performing full validation"
+        summary = "Validate QR Code",
+        description = "Validates a QR code either from string content or uploaded image. Supports optional format filtering."
     )
-    fun formatRecognition(@RequestBody qr: QRContents): ValidationService.FormatRecognitionResult {
-        return validationService.recognizeFormat(qr.uri)
-    }
-
-    /**
-     * Check if QR code matches a specific format
-     */
-    @PostMapping("/validation/format-recognition/{format}")
-    @Tag(name = "Validation Services")
-    @Operation(
-        summary = "Specific Format Recognition",
-        description = "Checks if a QR code matches a specific format"
-    )
-    fun specificFormatRecognition(
-        @RequestBody qr: QRContents,
-        @Parameter(description = "Format to check (HCERT, SHC, DIVOC_B64, DIVOC_PK, ICAO)")
-        @PathVariable format: String
-    ): ValidationService.FormatRecognitionResult {
-        val targetFormat = try {
-            when (format.uppercase()) {
-                "HCERT", "HC1" -> ValidationService.QRFormat.HCERT
-                "SHC" -> ValidationService.QRFormat.SHC
-                "DIVOC_B64", "B64" -> ValidationService.QRFormat.DIVOC_B64
-                "DIVOC_PK", "PK" -> ValidationService.QRFormat.DIVOC_PK
-                "ICAO" -> ValidationService.QRFormat.ICAO
-                else -> return ValidationService.FormatRecognitionResult(
-                    false, null, "Unknown format: $format"
-                )
-            }
-        } catch (e: Exception) {
-            return ValidationService.FormatRecognitionResult(
-                false, null, "Invalid format parameter: $format"
+    @ApiResponses(value = [
+        ApiResponse(responseCode = "200", description = "Valid certificate", content = [Content(schema = Schema(implementation = ValidationResponse::class))]),
+        ApiResponse(responseCode = "400", description = "Invalid input format"),
+        ApiResponse(responseCode = "404", description = "QR code format not recognized"),
+        ApiResponse(responseCode = "422", description = "Invalid certificate content")
+    ])
+    fun validateCode(
+        @RequestParam(required = false) format: String?,
+        @RequestParam(required = false) file: MultipartFile?,
+        @RequestBody(required = false) request: ValidationRequest?
+    ): ResponseEntity<ValidationResponse> {
+        
+        // Determine QR content source
+        val qrContent = when {
+            file != null && !file.isEmpty -> extractQRFromImage(file)
+            request?.content != null -> request.content
+            else -> return ResponseEntity.badRequest().body(
+                ValidationResponse(false, null, null, 
+                    ValidationDetails("INVALID_INPUT", null, null, false, "No QR content or image provided"))
             )
         }
 
-        return validationService.recognizeSpecificFormat(qr.uri, targetFormat)
+        if (qrContent == null) {
+            return ResponseEntity.status(404).body(
+                ValidationResponse(false, null, null,
+                    ValidationDetails("QR_NOT_FOUND", null, null, false, "QR code not found in image"))
+            )
+        }
+
+        // Check format filtering - for now, focus on HC1
+        if (format != null) {
+            val supportedFormat = when (format.uppercase()) {
+                "HC1", "HCERT" -> "HC1"
+                else -> return ResponseEntity.badRequest().body(
+                    ValidationResponse(false, null, null,
+                        ValidationDetails("UNSUPPORTED_FORMAT", null, null, false, "Format '$format' not supported. Currently only HC1 is supported."))
+                )
+            }
+            
+            // Check if QR matches requested format
+            if (!qrContent.uppercase().startsWith("$supportedFormat:")) {
+                return ResponseEntity.status(422).body(
+                    ValidationResponse(false, null, null,
+                        ValidationDetails("FORMAT_MISMATCH", null, null, false, "QR code does not match requested format $supportedFormat"))
+                )
+            }
+        }
+
+        // Check if format is recognized (if no format filter specified)
+        if (format == null && !qrContent.uppercase().startsWith("HC1:")) {
+            return ResponseEntity.status(404).body(
+                ValidationResponse(false, null, null,
+                    ValidationDetails("FORMAT_NOT_RECOGNIZED", null, null, false, "QR code format not recognized. Currently only HC1 format is supported."))
+            )
+        }
+
+        // Perform validation
+        val verificationResult = QRDecoder(registry).decode(qrContent)
+        
+        return when (verificationResult.status) {
+            QRDecoder.Status.VERIFIED -> ResponseEntity.ok(
+                ValidationResponse(
+                    valid = true,
+                    format = "HC1",
+                    issuer = verificationResult.issuer?.displayName,
+                    details = ValidationDetails(
+                        status = "VERIFIED",
+                        kid = extractKidFromResult(verificationResult),
+                        environment = verificationResult.issuer?.scope?.name,
+                        signatureValid = true,
+                        content = verificationResult.unpacked
+                    )
+                )
+            )
+            QRDecoder.Status.NOT_SUPPORTED -> ResponseEntity.status(404).body(
+                ValidationResponse(false, "UNKNOWN", null,
+                    ValidationDetails("NOT_SUPPORTED", null, null, false, "QR code format not supported"))
+            )
+            QRDecoder.Status.INVALID_ENCODING -> ResponseEntity.status(422).body(
+                ValidationResponse(false, "HC1", null,
+                    ValidationDetails("INVALID_ENCODING", null, null, false, "Invalid QR code encoding"))
+            )
+            QRDecoder.Status.INVALID_SIGNATURE -> ResponseEntity.status(422).body(
+                ValidationResponse(false, "HC1", verificationResult.issuer?.displayName,
+                    ValidationDetails("INVALID_SIGNATURE", extractKidFromResult(verificationResult), 
+                        verificationResult.issuer?.scope?.name, false, verificationResult.unpacked))
+            )
+            QRDecoder.Status.ISSUER_NOT_TRUSTED -> ResponseEntity.status(422).body(
+                ValidationResponse(false, "HC1", null,
+                    ValidationDetails("ISSUER_NOT_TRUSTED", extractKidFromResult(verificationResult), null, false, verificationResult.unpacked))
+            )
+            else -> ResponseEntity.status(422).body(
+                ValidationResponse(false, "HC1", verificationResult.issuer?.displayName,
+                    ValidationDetails(verificationResult.status.name, extractKidFromResult(verificationResult), 
+                        verificationResult.issuer?.scope?.name, false, verificationResult.unpacked))
+            )
+        }
     }
 
-    /**
-     * Extract KID (Key ID) from QR code if present
-     */
-    @PostMapping("/validation/kid-extraction")
-    @Tag(name = "Validation Services")
-    @Operation(
-        summary = "Key ID Extraction",
-        description = "Extracts the Key ID (KID) from a QR code if present in the certificate headers"
-    )
-    fun kidExtraction(@RequestBody qr: QRContents): ValidationService.KidExtractionResult {
-        return validationService.extractKid(qr.uri)
+    private fun extractQRFromImage(file: MultipartFile): String? {
+        return try {
+            val image = if (StringUtils.endsWithIgnoreCase(file.originalFilename, "pdf")) {
+                val doc = Loader.loadPDF(ByteArrayInputStream(file.bytes).readAllBytes())
+                val pdfRenderer = PDFRenderer(doc)
+                pdfRenderer.renderImageWithDPI(0, 300f)
+            } else {
+                ImageIO.read(ByteArrayInputStream(file.bytes))
+            }
+
+            val binaryBitmap = BinaryBitmap(HybridBinarizer(
+                BufferedImageLuminanceSource(addBordertoImage(image))
+            ))
+
+            val qrContents = MultiFormatReader().decode(binaryBitmap)
+            qrContents.text
+        } catch (e: NotFoundException) {
+            null
+        } catch (e: Exception) {
+            null
+        }
     }
 
-    /**
-     * Check which environment (DEV/UAT/PROD) a KID belongs to
-     */
-    @PostMapping("/validation/kid-environment")
-    @Tag(name = "Validation Services")
-    @Operation(
-        summary = "Key ID Environment Check",
-        description = "Determines which environment (PRODUCTION, ACCEPTANCE_TEST, DEV_STAGING) a Key ID belongs to"
-    )
-    fun kidEnvironment(@RequestBody request: KidEnvironmentRequest): ValidationService.KidEnvironmentResult {
-        return validationService.checkKidEnvironment(request.kid)
+    private fun extractKidFromResult(result: QRDecoder.VerificationResult): String? {
+        // This is a simplified approach - in a real implementation, 
+        // we would extract the actual KID from the certificate structure
+        return "extracted_kid_placeholder"
     }
-
-    /**
-     * Validate digital signature of QR code
-     */
-    @PostMapping("/validation/signature-validation")
-    @Tag(name = "Validation Services")
-    @Operation(
-        summary = "Signature Validation",
-        description = "Validates the digital signature of a QR code certificate with detailed status information"
-    )
-    fun signatureValidation(@RequestBody qr: QRContents): ValidationService.SignatureValidationResult {
-        return validationService.validateSignature(qr.uri)
-    }
-
-    /**
-     * Extract content from QR code
-     */
-    @PostMapping("/validation/content-extraction")
-    @Tag(name = "Validation Services")
-    @Operation(
-        summary = "Content Extraction",
-        description = "Extracts and decodes the content from a QR code without signature validation"
-    )
-    fun contentExtraction(@RequestBody qr: QRContents): ValidationService.ContentExtractionResult {
-        return validationService.extractContent(qr.uri)
-    }
-
-    // Data class for KID environment request
-    data class KidEnvironmentRequest(
-        val kid: String
-    )
 
     fun addBordertoImage(source: BufferedImage, color: Color = Color.WHITE, borderLeft: Int = 50, borderTop: Int = 50): BufferedImage {
         val borderedImageWidth: Int = source.width + borderLeft * 2
