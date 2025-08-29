@@ -37,6 +37,9 @@ class RestController {
         var registry = CompoundRegistry(TrustRegistryFactory.getTrustRegistries()).apply {
             init()
         }
+        
+        // Initialize validation service
+        val validationService = ValidationService(registry)
     }
 
     data class QRContents(
@@ -110,6 +113,61 @@ class RestController {
 
         return this.verify(QRContents(qrContents.text))
     }
+
+    // Granular validation service endpoints (kept for backwards compatibility)
+
+    /**
+     * Extract KID (Key ID) from QR code if present
+     */
+    @PostMapping("/validation/kid-extraction")
+    @Operation(
+        summary = "Extract KID from QR Code",
+        description = "Extracts the Key ID (KID) from a QR code if present, without performing full verification"
+    )
+    fun kidExtraction(@RequestBody qr: QRContents): ValidationService.KidExtractionResult {
+        return validationService.extractKid(qr.uri)
+    }
+
+    /**
+     * Check which environment (DEV/UAT/PROD) a KID belongs to
+     */
+    @PostMapping("/validation/kid-environment")
+    @Operation(
+        summary = "Check KID Environment",
+        description = "Determines which environment (DEV/UAT/PROD) a Key ID belongs to"
+    )
+    fun kidEnvironment(@RequestBody request: KidEnvironmentRequest): ValidationService.KidEnvironmentResult {
+        return validationService.checkKidEnvironment(request.kid)
+    }
+
+    /**
+     * Validate digital signature of QR code
+     */
+    @PostMapping("/validation/signature-validation")
+    @Operation(
+        summary = "Validate Digital Signature",
+        description = "Validates the digital signature of a QR code certificate"
+    )
+    fun signatureValidation(@RequestBody qr: QRContents): ValidationService.SignatureValidationResult {
+        return validationService.validateSignature(qr.uri)
+    }
+
+    /**
+     * Extract content from QR code
+     */
+    @PostMapping("/validation/content-extraction")
+    @Operation(
+        summary = "Extract QR Code Content",
+        description = "Extracts and decodes the content from a QR code certificate"
+    )
+    fun contentExtraction(@RequestBody qr: QRContents): ValidationService.ContentExtractionResult {
+        return validationService.extractContent(qr.uri)
+    }
+
+    // Data class for KID environment request
+    data class KidEnvironmentRequest(
+        val kid: String
+    )
 
     // New unified validation endpoint
 
